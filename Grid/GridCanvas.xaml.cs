@@ -27,6 +27,9 @@ internal sealed partial class GridCanvas : UserControl
     // Currently open folder popup (only one at a time)
     private FolderPopup? _openPopup;
 
+    // Owner HWND passed in from MainWindow — used for Properties dialog.
+    internal nint OwnerHwnd { get; set; }
+
     public GridCanvas()
     {
         InitializeComponent();
@@ -47,6 +50,10 @@ internal sealed partial class GridCanvas : UserControl
     {
         Recalculate();
         _ = LoadItemsAsync();
+        _repo.StartWatching(DispatcherQueue);
+        _repo.ItemCreated += OnItemCreated;
+        _repo.ItemDeleted += OnItemDeleted;
+        _repo.ItemRenamed += OnItemRenamed;
     }
 
     // ── Layout ─────────────────────────────────────────────────────────────────
@@ -84,6 +91,89 @@ internal sealed partial class GridCanvas : UserControl
 
     private async Task LoadItemsAsync()
     {
+        var layout = LayoutPersistence.TryLoad();
+
+        if (layout is not null)
+            await RestoreLayoutAsync(layout);
+        else
+            await AutoPlaceItemsAsync();
+    }
+
+    /// Restore from persisted layout: placed items at saved coordinates,
+    /// then auto-place any newly-discovered items that aren't in the layout.
+    private async Task RestoreLayoutAsync(LayoutPersistence.LayoutData layout)
+    {
+        var placements = new List<(DesktopItemElement Element, DesktopItemControl Control)>();
+
+        // ── Restore folders first (they occupy slots) ──
+        foreach (var pf in layout.Folders)
+        {
+            var folder = LayoutPersistence.ToFolder(pf, _config.DefaultIconCells);
+            if (!_manager.CanPlace(folder.TopLeft, folder.WidthCells, folder.HeightCells))
+                continue; // overlap — skip
+
+            _manager.Place(folder);
+            _folderIcons[folder] = Enumerable.Repeat<BitmapImage?>(null, folder.ItemPaths.Count).ToList();
+
+            double block  = _config.DefaultIconCells * _config.CellSize;
+            var control   = new FolderControl { Width = block, Height = block };
+            control.Bind(folder);
+
+            var px = _config.GridToPixel(folder.TopLeft);
+            Canvas.SetLeft(control, px.X);
+            Canvas.SetTop(control,  px.Y);
+
+            LayerCanvas.Children.Add(control);
+            _folders.Add((folder, control));
+            WireFolderControl(control, folder);
+        }
+
+        // ── Restore items at saved coordinates ──
+        var restoredPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pi in layout.Items)
+        {
+            var coord = new GridCoordinate(pi.Col, pi.Row);
+            if (!_manager.CanPlace(coord, _config.DefaultIconCells, _config.DefaultIconCells))
+                continue; // overlap — skip
+
+            var element = LayoutPersistence.ToElement(pi, _config.DefaultIconCells);
+            _manager.Place(element);
+            restoredPaths.Add(pi.Path);
+
+            var (control, px) = CreateItemControl(element);
+            placements.Add((element, control));
+        }
+
+        // ── Auto-place items not in the saved layout ──
+        var allPaths = _repo.GetPaths();
+        // Exclude paths already in folders
+        var folderPaths = new HashSet<string>(_folders.SelectMany(f => f.Model.ItemPaths),
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var path in allPaths)
+        {
+            if (restoredPaths.Contains(path) || folderPaths.Contains(path)) continue;
+
+            var slot = FindNextFreeSlot();
+            if (slot is null) break;
+
+            var element = new DesktopItemElement(path, slot.Value, _config.DefaultIconCells);
+            _manager.Place(element);
+            var (control, px) = CreateItemControl(element);
+            placements.Add((element, control));
+        }
+
+        // ── Async icon load for all items ──
+        await LoadIconsAsync(placements);
+
+        // ── Async icon load for all folders ──
+        foreach (var (folder, control) in _folders.ToList())
+            await LoadFolderIconsAsync(folder, control);
+    }
+
+    /// Original auto-placement: column-first, all items at first free slot.
+    private async Task AutoPlaceItemsAsync()
+    {
         var paths = _repo.GetPaths();
         var placements = new List<(DesktopItemElement Element, DesktopItemControl Control)>(paths.Count);
 
@@ -94,23 +184,36 @@ internal sealed partial class GridCanvas : UserControl
 
             var element = new DesktopItemElement(path, slot.Value, _config.DefaultIconCells);
             _manager.Place(element);
-
-            double block = _config.DefaultIconCells * _config.CellSize;
-            var control  = new DesktopItemControl { Width = block, Height = block };
-            control.Bind(element);
-
-            var px = _config.GridToPixel(slot.Value);
-            Canvas.SetLeft(control, px.X);
-            Canvas.SetTop(control,  px.Y);
-
-            LayerCanvas.Children.Add(control);
-            _items.Add((element, control));
+            var (control, px) = CreateItemControl(element);
             placements.Add((element, control));
-
-            // Attach drag
-            _drag.AttachItem(control, element);
         }
 
+        await LoadIconsAsync(placements);
+    }
+
+    /// Constructs and registers a DesktopItemControl for the given element.
+    private (DesktopItemControl Control, Windows.Foundation.Point Pixel) CreateItemControl(
+        DesktopItemElement element)
+    {
+        double block = _config.DefaultIconCells * _config.CellSize;
+        var control  = new DesktopItemControl { Width = block, Height = block };
+        control.OwnerHwnd = OwnerHwnd;
+        control.Bind(element);
+
+        var px = _config.GridToPixel(element.TopLeft);
+        Canvas.SetLeft(control, px.X);
+        Canvas.SetTop(control,  px.Y);
+
+        LayerCanvas.Children.Add(control);
+        _items.Add((element, control));
+        _drag.AttachItem(control, element);
+
+        return (control, px);
+    }
+
+    private async Task LoadIconsAsync(
+        IReadOnlyList<(DesktopItemElement Element, DesktopItemControl Control)> placements)
+    {
         var dq = DispatcherQueue;
         await Task.WhenAll(placements.Select(async p =>
         {
@@ -120,6 +223,11 @@ internal sealed partial class GridCanvas : UserControl
             dq.TryEnqueue(p.Control.UpdateIcon);
         }));
     }
+
+    // ── Save layout helper ─────────────────────────────────────────────────────
+
+    private void SaveLayout() =>
+        LayoutPersistence.Save(_items, _folders);
 
     // ── Folder: create from two items ─────────────────────────────────────────
 
@@ -162,6 +270,7 @@ internal sealed partial class GridCanvas : UserControl
 
         // Load icons async
         await LoadFolderIconsAsync(folder, control);
+        SaveLayout();
     }
 
     private async Task LoadFolderIconsAsync(FolderModel folder, FolderControl control)
@@ -200,6 +309,8 @@ internal sealed partial class GridCanvas : UserControl
         var entry = _folders.FirstOrDefault(f => f.Model == folder);
         if (entry.Control is not null)
             await LoadFolderIconsAsync(folder, entry.Control);
+
+        SaveLayout();
     }
 
     // ── Folder: remove item (drag out) ─────────────────────────────────────────
@@ -227,25 +338,15 @@ internal sealed partial class GridCanvas : UserControl
 
             var element = new DesktopItemElement(lastPath, slot, _config.DefaultIconCells);
             _manager.Place(element);
-
-            double block = _config.DefaultIconCells * _config.CellSize;
-            var control  = new DesktopItemControl { Width = block, Height = block };
-            control.Bind(element);
-
-            var px = _config.GridToPixel(slot);
-            Canvas.SetLeft(control, px.X);
-            Canvas.SetTop(control,  px.Y);
-
-            LayerCanvas.Children.Add(control);
-            _items.Add((element, control));
-            _drag.AttachItem(control, element);
-
+            var (control, _px) = CreateItemControl(element);
             _ = LoadSingleItemIconAsync(element, control);
+            SaveLayout();
         }
         // count == 0 → folder was just emptied by drag-out; also dissolve
         else if (folder.ItemPaths.Count == 0)
         {
             RemoveFolder(folder);
+            SaveLayout();
         }
     }
 
@@ -313,6 +414,7 @@ internal sealed partial class GridCanvas : UserControl
     {
         if (control.Model is null) return;
         RemoveFolder(control.Model);
+        SaveLayout();
     }
 
     // ── Drag event handlers ────────────────────────────────────────────────────
@@ -327,6 +429,7 @@ internal sealed partial class GridCanvas : UserControl
         var px = _config.GridToPixel(newSlot);
         Canvas.SetLeft(control, px.X);
         Canvas.SetTop(control,  px.Y);
+        SaveLayout();
     }
 
     private void OnFolderMoved(FolderModel folder, GridCoordinate newSlot)
@@ -338,6 +441,7 @@ internal sealed partial class GridCanvas : UserControl
         var px = _config.GridToPixel(newSlot);
         Canvas.SetLeft(control, px.X);
         Canvas.SetTop(control,  px.Y);
+        SaveLayout();
     }
 
     /// Drag dropped onto an occupied cell — determine whether it's a folder or item.
@@ -383,18 +487,8 @@ internal sealed partial class GridCanvas : UserControl
 
         var element = new DesktopItemElement(path, slot.Value, _config.DefaultIconCells);
         _manager.Place(element);
-
-        double block = _config.DefaultIconCells * _config.CellSize;
-        var control  = new DesktopItemControl { Width = block, Height = block };
-        control.Bind(element);
-
-        var px = _config.GridToPixel(slot.Value);
-        Canvas.SetLeft(control, px.X);
-        Canvas.SetTop(control,  px.Y);
-
-        LayerCanvas.Children.Add(control);
-        _items.Add((element, control));
-        _drag.AttachItem(control, element);
+        CreateItemControl(element);
+        SaveLayout();
     }
 
     // ── Remove helpers ─────────────────────────────────────────────────────────
@@ -407,6 +501,85 @@ internal sealed partial class GridCanvas : UserControl
         {
             LayerCanvas.Children.Remove(entry.Control);
             _items.Remove(entry);
+        }
+    }
+
+    // ── FileSystemWatcher handlers ─────────────────────────────────────────────
+
+    private void OnItemCreated(string path)
+    {
+        // Ignore desktop.ini
+        if (path.EndsWith("desktop.ini", StringComparison.OrdinalIgnoreCase)) return;
+
+        // Already tracked (e.g., copy-in triggered duplicate event)?
+        if (_items.Any(i => string.Equals(i.Element.Path, path,
+                StringComparison.OrdinalIgnoreCase))) return;
+
+        var slot = FindNextFreeSlot();
+        if (slot is null) return;
+
+        var element = new DesktopItemElement(path, slot.Value, _config.DefaultIconCells);
+        _manager.Place(element);
+        var (control, _px) = CreateItemControl(element);
+        _ = LoadSingleItemIconAsync(element, control);
+        SaveLayout();
+    }
+
+    private void OnItemDeleted(string path)
+    {
+        // Check standalone items
+        var entry = _items.FirstOrDefault(i =>
+            string.Equals(i.Element.Path, path, StringComparison.OrdinalIgnoreCase));
+        if (entry.Element is not null)
+        {
+            RemoveItem(entry.Element);
+            SaveLayout();
+            return;
+        }
+
+        // Check inside folders
+        var folderEntry = _folders.FirstOrDefault(f =>
+            f.Model.ItemPaths.Any(p =>
+                string.Equals(p, path, StringComparison.OrdinalIgnoreCase)));
+        if (folderEntry.Model is null) return;
+
+        RemoveItemFromFolder(path, folderEntry.Model);
+        SaveLayout();
+    }
+
+    private void OnItemRenamed(string oldPath, string newPath)
+    {
+        // Update standalone item
+        var entry = _items.FirstOrDefault(i =>
+            string.Equals(i.Element.Path, oldPath, StringComparison.OrdinalIgnoreCase));
+        if (entry.Element is not null)
+        {
+            // DesktopItemElement.Path is get-only; replace with a new element at the same slot
+            var slot  = entry.Element.TopLeft;
+            var cells = entry.Element.WidthCells;
+
+            RemoveItem(entry.Element);
+
+            var newElement = new DesktopItemElement(newPath, slot, cells);
+            _manager.Place(newElement);
+            var (control, _px) = CreateItemControl(newElement);
+            _ = LoadSingleItemIconAsync(newElement, control);
+            SaveLayout();
+            return;
+        }
+
+        // Update path inside a folder
+        var folderEntry = _folders.FirstOrDefault(f =>
+            f.Model.ItemPaths.Any(p =>
+                string.Equals(p, oldPath, StringComparison.OrdinalIgnoreCase)));
+        if (folderEntry.Model is null) return;
+
+        int idx = folderEntry.Model.ItemPaths.FindIndex(p =>
+            string.Equals(p, oldPath, StringComparison.OrdinalIgnoreCase));
+        if (idx >= 0)
+        {
+            folderEntry.Model.ItemPaths[idx] = newPath;
+            SaveLayout();
         }
     }
 

@@ -6,7 +6,8 @@ namespace CustomDesktop.Infrastructure;
 
 internal static class ShellWindow
 {
-    internal static void Configure(Window window)
+    /// Applies all shell window settings and returns the HWND for further use.
+    internal static nint Configure(Window window)
     {
         nint hwnd = WindowNative.GetWindowHandle(window);
 
@@ -21,9 +22,17 @@ internal static class ShellWindow
         window.AppWindow.MoveAndResize(workArea);
 
         // SendToBottom is called when the window is first activated (via App.Activate()).
-        // The constructor call would be a no-op because the window is not yet in the
-        // Z-order. WS_EX_NOACTIVATE prevents user-driven re-activation afterwards,
-        // so this single hook is sufficient for the initial placement.
         window.Activated += (_, _) => NativeMethods.SendToBottom(hwnd);
+
+        return hwnd;
+    }
+
+    /// Re-reads the primary work area and repositions/resizes the window to fill it.
+    /// Called from SystemEventBridge on WM_SETTINGCHANGE / WM_DISPLAYCHANGE.
+    internal static void ResetToWorkArea(Window window, nint hwnd)
+    {
+        var workArea = DisplayArea.Primary.WorkArea;
+        window.AppWindow.MoveAndResize(workArea);
+        NativeMethods.SendToBottom(hwnd);
     }
 }

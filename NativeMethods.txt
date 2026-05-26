@@ -34,3 +34,8 @@ SHGetFileInfo
 RegisterWindowMessage
 PostMessage
 SendMessage
+
+// Phase 5 - Window subclassing (SystemEventBridge)
+SetWindowSubclass
+RemoveWindowSubclass
+DefSubclassProc

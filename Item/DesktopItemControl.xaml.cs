@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using CustomDesktop.Infrastructure;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -9,6 +10,10 @@ namespace CustomDesktop.Item;
 internal sealed partial class DesktopItemControl : UserControl
 {
     private DesktopItemElement? _item;
+
+    // Set by GridCanvas after the control is added to the visual tree,
+    // so ShowFileProperties can pass the owner HWND to the shell.
+    internal nint OwnerHwnd { get; set; }
 
     // Raised when the user holds the pointer down long enough to start a drag.
     internal event Action<DesktopItemControl>? DragStartRequested;
@@ -73,6 +78,12 @@ internal sealed partial class DesktopItemControl : UserControl
         var package = new DataPackage();
         package.SetText(_item.Path);
         Clipboard.SetContent(package);
+    }
+
+    private void Properties_Click(object sender, RoutedEventArgs e)
+    {
+        if (_item is null) return;
+        NativeMethods.ShowFileProperties(_item.Path, OwnerHwnd);
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────────

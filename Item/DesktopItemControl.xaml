@@ -33,11 +33,8 @@
                 <MenuFlyoutSeparator/>
                 <MenuFlyoutItem Text="Open file location" Click="OpenLocation_Click"/>
                 <MenuFlyoutItem Text="Copy path"          Click="CopyPath_Click"/>
-                <!--
-                    Properties: requires ShellExecuteEx which the CsWin32 source
-                    generator cannot emit for this project configuration (HINSTANCE
-                    return type). Deferred to Phase 5.
-                -->
+                <MenuFlyoutSeparator/>
+                <MenuFlyoutItem Text="Properties"         Click="Properties_Click"/>
             </MenuFlyout>
         </Grid.ContextFlyout>
 
