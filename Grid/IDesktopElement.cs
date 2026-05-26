@@ -6,7 +6,7 @@ namespace CustomDesktop.Grid;
 /// </summary>
 internal interface IDesktopElement
 {
-    GridCoordinate TopLeft    { get; }
+    GridCoordinate TopLeft    { get; set; }
     int            WidthCells { get; }
     int            HeightCells { get; }
 }

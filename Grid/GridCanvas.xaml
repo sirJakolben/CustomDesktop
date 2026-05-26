@@ -8,32 +8,45 @@
         Transparent background is mandatory: without it the Canvas receives no
         pointer events on empty areas and hover detection stops working.
     -->
-    <Canvas
-        x:Name="LayerCanvas"
-        HorizontalAlignment="Stretch"
-        VerticalAlignment="Stretch"
-        Background="Transparent"
-        PointerMoved="LayerCanvas_PointerMoved"
-        PointerExited="LayerCanvas_PointerExited"
-        RightTapped="LayerCanvas_RightTapped">
+    <Grid>
+
+        <!-- Primary layer: items, folders, hover indicator -->
+        <Canvas
+            x:Name="LayerCanvas"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            Background="Transparent"
+            PointerMoved="LayerCanvas_PointerMoved"
+            PointerExited="LayerCanvas_PointerExited"
+            RightTapped="LayerCanvas_RightTapped">
+
+            <!--
+                Hover slot indicator.
+                Appears only over FREE grid slots when the mouse passes over them.
+                Size and position are set in code-behind based on GridConfiguration.
+                IsHitTestVisible=False so it never intercepts the pointer events itself.
+            -->
+            <Border
+                x:Name="HoverIndicator"
+                CornerRadius="12"
+                Background="#55808080"
+                IsHitTestVisible="False"
+                Visibility="Collapsed"
+                Canvas.ZIndex="100" />
+
+        </Canvas>
 
         <!--
-            Hover slot indicator.
-            Appears only over FREE grid slots when the mouse passes over them.
-            Size and position are set in code-behind based on GridConfiguration.
-            IsHitTestVisible=False so it never intercepts the pointer events itself.
+            Drag overlay: normally transparent and non-hit-testable.
+            DragManager sets IsHitTestVisible=True during a drag to capture
+            all pointer events; ghost and snap indicator are placed here.
         -->
-        <!--
-            Canvas.ZIndex="100" ensures the indicator renders above all item
-            controls (which default to ZIndex=0) regardless of child order.
-        -->
-        <Border
-            x:Name="HoverIndicator"
-            CornerRadius="12"
-            Background="#55808080"
-            IsHitTestVisible="False"
-            Visibility="Collapsed"
-            Canvas.ZIndex="100" />
+        <Canvas
+            x:Name="DragOverlayCanvas"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            Background="Transparent"
+            IsHitTestVisible="False" />
 
-    </Canvas>
+    </Grid>
 </UserControl>

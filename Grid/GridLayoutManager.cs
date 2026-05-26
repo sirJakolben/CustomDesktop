@@ -55,12 +55,13 @@ internal sealed class GridLayoutManager
     {
         Remove(element);
 
-        // Cast to concrete type when we need to mutate position (Phase 3 adds setters)
         if (!CanPlace(newTopLeft, element.WidthCells, element.HeightCells))
         {
-            Place(element); // roll back
+            Place(element); // roll back — element.TopLeft still holds the old position
             throw new InvalidOperationException("Target cells are occupied.");
         }
+
+        element.TopLeft = newTopLeft;   // update position BEFORE re-registering cells
         Place(element);
     }
 }

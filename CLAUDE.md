@@ -77,7 +77,7 @@ Keine Änderungen vor Schritt 4.
 - Phase 0: Toolchain          ✅ abgeschlossen
 - Phase 1: Shell-Fenster-Fundament (Spikes 01-03) ✅ abgeschlossen
 - Phase 2: Grid-Engine ✅ abgeschlossen
-- Phase 3: Desktop-Icon-Integration (Spikes 05-06)
-- Phase 4: App-Folder-System
+- Phase 3: Desktop-Icon-Integration (Spikes 05-06) ✅ abgeschlossen
+- Phase 4: App-Folder-System ✅ abgeschlossen
 - Phase 5: Resilienz (System-Events)
 - Phase 6: Widget-System & Settings-UI
