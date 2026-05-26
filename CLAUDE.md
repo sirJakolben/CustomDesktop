@@ -60,9 +60,22 @@ dotnet run   -c Debug -p:Platform=$Platform
 - Kein Autoload/Singleton-Pattern für Windows-API-Wrapper — explizite Dependency Injection
 - Keine Magic Strings für Window-Class-Namen — Konstanten in `Infrastructure/WindowConstants.cs`
 
+## Debugging-Protokoll (ZWINGEND nach jeder Phase)
+Dieses Protokoll MUSS nach Abschluss jeder Phase vollständig durchlaufen werden.
+Keine Änderungen vor Schritt 4.
+
+```
+1. Alle relevanten Dateien lesen — niemals raten
+2. 3 Hypothesen formulieren, nach Wahrscheinlichkeit gerankt
+3. Jede Hypothese durch Ausführen des Codes / der Tests verifizieren
+4. NUR die bestätigte Ursache beheben — nichts anderes
+5. Danach vollständige Test-Suite ausführen
+6. Befund und Änderungen dokumentieren
+```
+
 ## Phasen-Übersicht
-- Phase 0: Toolchain ← AKTUELL
-- Phase 1: Shell-Fenster-Fundament (Spikes 01-03)
+- Phase 0: Toolchain          ✅ abgeschlossen
+- Phase 1: Shell-Fenster-Fundament (Spikes 01-03) ✅ abgeschlossen
 - Phase 2: Grid-Engine
 - Phase 3: Desktop-Icon-Integration (Spikes 05-06)
 - Phase 4: App-Folder-System

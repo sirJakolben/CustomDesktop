@@ -20,9 +20,10 @@ internal static class ShellWindow
         var workArea = DisplayArea.Primary.WorkArea;
         window.AppWindow.MoveAndResize(workArea);
 
-        // Drop to the bottom of Z-order immediately and again after WinUI 3
-        // raises the window on its initial activation call.
-        NativeMethods.SendToBottom(hwnd);
+        // SendToBottom is called when the window is first activated (via App.Activate()).
+        // The constructor call would be a no-op because the window is not yet in the
+        // Z-order. WS_EX_NOACTIVATE prevents user-driven re-activation afterwards,
+        // so this single hook is sufficient for the initial placement.
         window.Activated += (_, _) => NativeMethods.SendToBottom(hwnd);
     }
 }
