@@ -1,0 +1,29 @@
+# CsWin32 — Win32 API declarations for CustomDesktop
+# Add one API name per line. CsWin32 generates the P/Invoke signatures automatically.
+# Reference: https://microsoft.github.io/CsWin32/
+
+# Phase 1 — Shell window hierarchy (Spike 01)
+EnumWindows
+GetWindowText
+GetClassName
+FindWindow
+SetParent
+SetWindowLong
+GetWindowLong
+SetWindowPos
+
+# Phase 1 — Window styling (Spike 02)
+ShowWindow
+UpdateWindow
+
+# Phase 1 — DWM / Mica (Spike 03)
+DwmSetWindowAttribute
+DwmExtendFrameIntoClientArea
+
+# Phase 3 — Shell icons (Spike 05)
+SHGetFileInfo
+
+# Phase 5 — System events
+RegisterWindowMessage
+PostMessage
+SendMessage
