@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl
+    x:Class="CustomDesktop.Grid.GridCanvas"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Transparent background is mandatory: without it the Canvas receives no
+        pointer events on empty areas and hover detection stops working.
+    -->
+    <Canvas
+        x:Name="LayerCanvas"
+        HorizontalAlignment="Stretch"
+        VerticalAlignment="Stretch"
+        Background="Transparent"
+        PointerMoved="LayerCanvas_PointerMoved"
+        PointerExited="LayerCanvas_PointerExited"
+        RightTapped="LayerCanvas_RightTapped">
+
+        <!--
+            Hover slot indicator.
+            Appears only over FREE grid slots when the mouse passes over them.
+            Size and position are set in code-behind based on GridConfiguration.
+            IsHitTestVisible=False so it never intercepts the pointer events itself.
+        -->
+        <Border
+            x:Name="HoverIndicator"
+            CornerRadius="12"
+            Background="#55808080"
+            IsHitTestVisible="False"
+            Visibility="Collapsed" />
+
+    </Canvas>
+</UserControl>

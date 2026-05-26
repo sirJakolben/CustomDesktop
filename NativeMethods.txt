@@ -7,7 +7,9 @@ EnumWindows
 GetWindowText
 GetClassName
 FindWindow
+FindWindowEx
 GetDesktopWindow
+GetCursorPos
 
 // Phase 1 - Window styling
 SetParent

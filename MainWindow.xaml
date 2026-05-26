@@ -5,12 +5,15 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:CustomDesktop"
+    xmlns:grid="using:CustomDesktop.Grid"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
     <Window.SystemBackdrop>
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <!-- Phase 1: Empty shell canvas. Grid and Folder content added in later phases. -->
-    <Grid x:Name="RootGrid" />
+    <Grid x:Name="RootGrid">
+        <!-- Phase 2: Grid canvas — hover detection, slot snapping, right-click passthrough -->
+        <grid:GridCanvas x:Name="DesktopGrid" />
+    </Grid>
 </Window>
