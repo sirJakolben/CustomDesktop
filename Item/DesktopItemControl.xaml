@@ -15,7 +15,11 @@
         x:Name="RootGrid"
         Background="Transparent"
         DoubleTapped="RootGrid_DoubleTapped"
-        RightTapped="RootGrid_RightTapped">
+        RightTapped="RootGrid_RightTapped"
+        PointerPressed="RootGrid_PointerPressed"
+        PointerMoved="RootGrid_PointerMoved"
+        PointerReleased="RootGrid_PointerReleased"
+        PointerCanceled="RootGrid_PointerCanceled">
 
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>

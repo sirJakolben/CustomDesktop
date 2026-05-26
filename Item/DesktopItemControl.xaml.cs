@@ -10,6 +10,14 @@ internal sealed partial class DesktopItemControl : UserControl
 {
     private DesktopItemElement? _item;
 
+    // Raised when the user holds the pointer down long enough to start a drag.
+    internal event Action<DesktopItemControl>? DragStartRequested;
+
+    // Drag-detection state
+    private bool   _pointerDown;
+    private global::Windows.Foundation.Point _pointerDownPos;
+    private const double DragThresholdPx = 8.0;
+
     public DesktopItemControl() => InitializeComponent();
 
     // ── Binding ─────────────────────────────────────────────────────────────────
@@ -82,5 +90,39 @@ internal sealed partial class DesktopItemControl : UserControl
             });
         }
         catch { /* silently ignore — user will see nothing happen; Phase 5 adds error UI */ }
+    }
+
+    // ── Drag detection ───────────────────────────────────────────────────────────
+
+    private void RootGrid_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        _pointerDown    = true;
+        _pointerDownPos = e.GetCurrentPoint(RootGrid).Position;
+        RootGrid.CapturePointer(e.Pointer);
+    }
+
+    private void RootGrid_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_pointerDown) return;
+        var pos = e.GetCurrentPoint(RootGrid).Position;
+        double dx = pos.X - _pointerDownPos.X;
+        double dy = pos.Y - _pointerDownPos.Y;
+        if (Math.Sqrt(dx * dx + dy * dy) >= DragThresholdPx)
+        {
+            _pointerDown = false;
+            RootGrid.ReleasePointerCapture(e.Pointer);
+            DragStartRequested?.Invoke(this);
+        }
+    }
+
+    private void RootGrid_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        _pointerDown = false;
+        RootGrid.ReleasePointerCapture(e.Pointer);
+    }
+
+    private void RootGrid_PointerCanceled(object sender, PointerRoutedEventArgs e)
+    {
+        _pointerDown = false;
     }
 }

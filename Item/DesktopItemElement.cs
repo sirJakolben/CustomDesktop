@@ -15,7 +15,7 @@ internal sealed class DesktopItemElement : IDesktopElement
 
     // IDesktopElement — TopLeft has an internal setter so GridCanvas can
     // position the element during auto-placement (Phase 3) and drag-drop (Phase 5).
-    public GridCoordinate TopLeft     { get; internal set; }
+    public GridCoordinate TopLeft     { get; set; }
     public int            WidthCells  { get; }
     public int            HeightCells { get; }
 
