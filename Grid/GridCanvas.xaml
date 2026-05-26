@@ -23,12 +23,17 @@
             Size and position are set in code-behind based on GridConfiguration.
             IsHitTestVisible=False so it never intercepts the pointer events itself.
         -->
+        <!--
+            Canvas.ZIndex="100" ensures the indicator renders above all item
+            controls (which default to ZIndex=0) regardless of child order.
+        -->
         <Border
             x:Name="HoverIndicator"
             CornerRadius="12"
             Background="#55808080"
             IsHitTestVisible="False"
-            Visibility="Collapsed" />
+            Visibility="Collapsed"
+            Canvas.ZIndex="100" />
 
     </Canvas>
 </UserControl>

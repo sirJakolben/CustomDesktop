@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<UserControl
+    x:Class="CustomDesktop.Item.DesktopItemControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Background="Transparent" is required for hit-testing on empty areas
+        so DoubleTapped and RightTapped fire anywhere within the control bounds.
+
+        Layout: top ~65 % icon, bottom ~35 % label with a semi-transparent
+        dark pill for readability on any wallpaper colour.
+    -->
+    <Grid
+        x:Name="RootGrid"
+        Background="Transparent"
+        DoubleTapped="RootGrid_DoubleTapped"
+        RightTapped="RootGrid_RightTapped">
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Context menu: right-click opens this flyout instead of Progman menu -->
+        <Grid.ContextFlyout>
+            <MenuFlyout>
+                <MenuFlyoutItem Text="Open"              Click="Open_Click"/>
+                <MenuFlyoutSeparator/>
+                <MenuFlyoutItem Text="Open file location" Click="OpenLocation_Click"/>
+                <MenuFlyoutItem Text="Copy path"          Click="CopyPath_Click"/>
+                <!--
+                    Properties: requires ShellExecuteEx which the CsWin32 source
+                    generator cannot emit for this project configuration (HINSTANCE
+                    return type). Deferred to Phase 5.
+                -->
+            </MenuFlyout>
+        </Grid.ContextFlyout>
+
+        <!-- Icon (shell thumbnail, loaded asynchronously) -->
+        <Image
+            x:Name="IconImage"
+            Grid.Row="0"
+            Margin="10,10,10,4"
+            Stretch="Uniform"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"/>
+
+        <!-- Label — dark semi-transparent pill for desktop contrast -->
+        <Border
+            Grid.Row="1"
+            Background="#66000000"
+            CornerRadius="4"
+            Padding="4,1"
+            Margin="4,0,4,6"
+            HorizontalAlignment="Center"
+            MaxWidth="140">
+            <TextBlock
+                x:Name="NameLabel"
+                TextAlignment="Center"
+                TextWrapping="Wrap"
+                MaxLines="2"
+                TextTrimming="CharacterEllipsis"
+                FontSize="11"
+                Foreground="White"/>
+        </Border>
+
+    </Grid>
+</UserControl>

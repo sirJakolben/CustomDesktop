@@ -1,4 +1,4 @@
-// CsWin32 - Win32 API declarations for CustomDesktop
+﻿// CsWin32 - Win32 API declarations for CustomDesktop
 // Add one API name per line. CsWin32 generates the P/Invoke signatures automatically.
 // Note: use // for comments, not #
 
@@ -23,8 +23,12 @@ UpdateWindow
 DwmSetWindowAttribute
 DwmExtendFrameIntoClientArea
 
-// Phase 3 - Shell icons (Spike 05)
+// Phase 3 - Shell icons and item actions
 SHGetFileInfo
+// Note: ShellExecuteEx / ShellExecuteW are silently skipped by the CsWin32 source
+// generator in this WinUI 3 packaged context (HINSTANCE return type conflict).
+// File Properties dialog is deferred to Phase 5 (direct DllImport exemption or
+// alternative API). All other item actions use Process.Start (no P/Invoke needed).
 
 // Phase 5 - System events
 RegisterWindowMessage
