@@ -11,9 +11,9 @@ namespace CustomDesktop.Folder;
 internal sealed class FolderModel : Grid.IDesktopElement
 {
     // ── IDesktopElement ────────────────────────────────────────────────────────
-    public GridCoordinate TopLeft     { get; set; }
-    public int            WidthCells  { get; }
-    public int            HeightCells { get; }
+    public GridCoordinate TopLeft      { get; set; }
+    public int            WidthCells  { get; set; }
+    public int            HeightCells { get; set; }
 
     // ── Folder data ────────────────────────────────────────────────────────────
     public string     Name            { get; set; }
@@ -21,6 +21,10 @@ internal sealed class FolderModel : Grid.IDesktopElement
 
     /// Ordered list of file-system paths contained in this folder.
     public List<string> ItemPaths { get; } = [];
+
+    /// When non-null: this folder is backed by a real filesystem directory.
+    /// null = virtual folder (tracked only in layout.json).
+    public string? DirectoryPath { get; set; }
 
     // ── Colour presets ─────────────────────────────────────────────────────────
     /// Eight built-in presets offered in the colour picker.
@@ -44,4 +48,7 @@ internal sealed class FolderModel : Grid.IDesktopElement
         Name        = name;
         BackgroundColor = Presets[0];
     }
+
+    /// Convenience: is this folder backed by a real directory?
+    public bool IsFilesystemFolder => DirectoryPath is not null;
 }

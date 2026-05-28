@@ -19,6 +19,9 @@ public sealed partial class MainWindow : Window
         _bridge.WorkAreaChanged += () => ShellWindow.ResetToWorkArea(this, _hwnd);
         _bridge.DisplayChanged  += () => ShellWindow.ResetToWorkArea(this, _hwnd);
 
+        // Ctrl+/- hotkeys → adjust grid density via GridCanvas
+        _bridge.VerticalSlotsDelta += delta => DesktopGrid.AdjustVerticalSlots(delta);
+
         // Pass HWND to GridCanvas so it can show native file Properties dialogs.
         DesktopGrid.OwnerHwnd = _hwnd;
 

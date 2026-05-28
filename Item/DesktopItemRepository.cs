@@ -17,14 +17,23 @@ internal sealed class DesktopItemRepository : IDisposable
 
     // ── Watcher events ─────────────────────────────────────────────────────────
 
-    /// Fires when a new item appears on the desktop.
+    /// Fires when a new file item appears on the desktop.
     internal event Action<string>? ItemCreated;
 
-    /// Fires when an existing item is removed from the desktop.
+    /// Fires when an existing file item is removed from the desktop.
     internal event Action<string>? ItemDeleted;
 
-    /// Fires when an item is renamed (or moved within the same folder).
+    /// Fires when a file item is renamed (or moved within the same folder).
     internal event Action<string /*oldPath*/, string /*newPath*/>? ItemRenamed;
+
+    /// Fires when a new directory appears on the desktop.
+    internal event Action<string>? DirectoryCreated;
+
+    /// Fires when a directory is removed from the desktop.
+    internal event Action<string>? DirectoryDeleted;
+
+    /// Fires when a directory on the desktop is renamed.
+    internal event Action<string /*oldPath*/, string /*newPath*/>? DirectoryRenamed;
 
     // ── Internals ──────────────────────────────────────────────────────────────
 
@@ -37,7 +46,7 @@ internal sealed class DesktopItemRepository : IDisposable
 
     // ── Public API ─────────────────────────────────────────────────────────────
 
-    /// Returns full paths of all current desktop items, excluding desktop.ini.
+    /// Returns full paths of all current desktop FILE items, excluding desktop.ini.
     public IReadOnlyList<string> GetPaths()
     {
         var list = new List<string>();
@@ -47,8 +56,16 @@ internal sealed class DesktopItemRepository : IDisposable
                 Directory.GetFiles(dir)
                     .Where(f => !f.EndsWith("desktop.ini",
                                     StringComparison.OrdinalIgnoreCase)));
-            list.AddRange(Directory.GetDirectories(dir));
         }
+        return list.AsReadOnly();
+    }
+
+    /// Returns full paths of all directories directly on the desktop.
+    public IReadOnlyList<string> GetDirectoryPaths()
+    {
+        var list = new List<string>();
+        foreach (var dir in _roots.Where(Directory.Exists))
+            list.AddRange(Directory.GetDirectories(dir));
         return list.AsReadOnly();
     }
 
@@ -67,13 +84,28 @@ internal sealed class DesktopItemRepository : IDisposable
             };
 
             w.Created += (_, e) => DebouncePost(dq, e.FullPath, () =>
-                ItemCreated?.Invoke(e.FullPath));
+            {
+                if (Directory.Exists(e.FullPath))
+                    DirectoryCreated?.Invoke(e.FullPath);
+                else
+                    ItemCreated?.Invoke(e.FullPath);
+            });
 
             w.Deleted += (_, e) => DebouncePost(dq, e.FullPath, () =>
-                ItemDeleted?.Invoke(e.FullPath));
+            {
+                // At deletion time we can't tell file vs directory from path alone.
+                // Fire both; GridCanvas will ignore the one that doesn't match.
+                ItemDeleted?.Invoke(e.FullPath);
+                DirectoryDeleted?.Invoke(e.FullPath);
+            });
 
             w.Renamed += (_, e) => DebouncePost(dq, e.FullPath, () =>
-                ItemRenamed?.Invoke(e.OldFullPath, e.FullPath));
+            {
+                if (Directory.Exists(e.FullPath))
+                    DirectoryRenamed?.Invoke(e.OldFullPath, e.FullPath);
+                else
+                    ItemRenamed?.Invoke(e.OldFullPath, e.FullPath);
+            });
 
             _watchers.Add(w);
         }
