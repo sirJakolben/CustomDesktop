@@ -82,6 +82,25 @@ internal static class NativeMethods
     internal static extern nint DefSubclassProc(
         nint hwnd, uint uMsg, nuint wParam, nint lParam);
 
+    // ── Global hotkeys (RegisterHotKey) ──────────────────────────────────────
+    // Used to adjust grid density from keyboard even when the overlay has no focus
+    // (WS_EX_NOACTIVATE prevents normal keyboard routing).
+
+    internal const uint WM_HOTKEY = 0x0312;
+
+    /// Modifier flags for RegisterHotKey.
+    internal const uint MOD_CONTROL = 0x0002;
+    internal const uint MOD_SHIFT   = 0x0004;
+    internal const uint MOD_NOREPEAT = 0x4000;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool RegisterHotKey(nint hwnd, int id, uint fsModifiers, uint vk);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool UnregisterHotKey(nint hwnd, int id);
+
     // ── File Properties dialog ────────────────────────────────────────────────
     // EXCEPTION to CsWin32 rule: ShellExecuteExW is silently skipped by the
     // Roslyn source generator (HINSTANCE return type conflict). Direct DllImport

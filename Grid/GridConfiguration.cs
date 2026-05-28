@@ -21,14 +21,19 @@ internal sealed class GridConfiguration
 
     /// Number of vertical grid slots. Controls density.
     /// Default 20 → ~32 px/cell on 1080p → 3x denser than standard 96 px Windows grid.
+    /// Minimum: DefaultIconCells (so at least one element fits vertically). No upper limit.
     public int VerticalSlots { get; set; } = 20;
 
     /// Equal top/bottom padding as a fraction of work-area height. Default = 1 %.
     public double EdgeMarginFraction { get; set; } = 0.01;
 
     /// Default side length of a desktop element in grid cells.
-    /// Each icon/folder/widget occupies (DefaultIconCells × DefaultIconCells) cells.
+    /// No upper limit — individual elements can be resized independently.
     public int DefaultIconCells { get; set; } = 3;
+
+    /// Radius (in grid cells) searched for a free slot when the exact drop target
+    /// is occupied. 0 = no search (only exact position highlighted).
+    public int MousePlaceRadius { get; set; } = 3;
 
     // ── Computed at runtime (never serialised) ─────────────────────────────────
 

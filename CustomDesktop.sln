@@ -1,0 +1,27 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36115.93
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomDesktop", "CustomDesktop.csproj", "{F9BBE7A0-992D-494D-A279-4724B0973F03}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F9BBE7A0-992D-494D-A279-4724B0973F03}.Debug|x64.ActiveCfg = Debug|x64
+		{F9BBE7A0-992D-494D-A279-4724B0973F03}.Debug|x64.Build.0 = Debug|x64
+		{F9BBE7A0-992D-494D-A279-4724B0973F03}.Debug|x64.Deploy.0 = Debug|x64
+		{F9BBE7A0-992D-494D-A279-4724B0973F03}.Release|x64.ActiveCfg = Release|x64
+		{F9BBE7A0-992D-494D-A279-4724B0973F03}.Release|x64.Build.0 = Release|x64
+		{F9BBE7A0-992D-494D-A279-4724B0973F03}.Release|x64.Deploy.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FD2E3635-C5D1-4F10-A818-CFE7CBA3A768}
+	EndGlobalSection
+EndGlobal

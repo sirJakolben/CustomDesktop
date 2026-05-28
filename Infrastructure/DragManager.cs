@@ -17,6 +17,8 @@ namespace CustomDesktop.Infrastructure;
 ///   2. DragManager captures the pointer on the overlay canvas and renders a
 ///      semi-transparent ghost at the pointer position.
 ///   3. On PointerMoved the snap indicator updates to the nearest free slot.
+///      If the exact snap position is occupied, MousePlaceRadius cells are searched
+///      in a spiral pattern to find the nearest free slot.
 ///   4. On PointerReleased the drop is committed:
 ///      - item on item   → create folder at the target slot
 ///      - item on folder → add to folder
@@ -74,7 +76,7 @@ internal sealed class DragManager
         _kind         = DragKind.Item;
         _draggedItem  = element;
         _sourcePopup  = popup;
-        StartVisuals(source);
+        StartVisuals(element.WidthCells, element.HeightCells);
     }
 
     private void BeginFolderDrag(FolderModel model, UIElement source)
@@ -82,29 +84,31 @@ internal sealed class DragManager
         _kind          = DragKind.Folder;
         _draggedFolder = model;
         _sourcePopup   = null;
-        StartVisuals(source);
+        StartVisuals(model.WidthCells, model.HeightCells);
     }
 
-    private void StartVisuals(UIElement source)
+    private void StartVisuals(int widthCells, int heightCells)
     {
-        // Ghost: semi-transparent white rectangle the same block size
-        double block = Config.DefaultIconCells * Config.CellSize;
+        double blockW = widthCells  * Config.CellSize;
+        double blockH = heightCells * Config.CellSize;
 
+        // Ghost: semi-transparent white rectangle matching the element size
         _ghost = new Border
         {
-            Width            = block,
-            Height           = block,
+            Width            = blockW,
+            Height           = blockH,
             Background       = new SolidColorBrush(Windows.UI.Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF)),
             CornerRadius     = new CornerRadius(12),
             IsHitTestVisible = false,
         };
         Canvas.SetZIndex(_ghost, 200);  // above everything
 
+        // Snap indicator: dark gray (shows where element will land)
         _snapIndicator = new Border
         {
-            Width            = block,
-            Height           = block,
-            Background       = new SolidColorBrush(Windows.UI.Color.FromArgb(0x55, 0x00, 0xAA, 0xFF)),
+            Width            = blockW,
+            Height           = blockH,
+            Background       = new SolidColorBrush(Windows.UI.Color.FromArgb(0xBB, 0x40, 0x40, 0x40)),
             CornerRadius     = new CornerRadius(12),
             IsHitTestVisible = false,
             Visibility       = Visibility.Collapsed,
@@ -127,26 +131,38 @@ internal sealed class DragManager
     {
         if (_kind == DragKind.None) return;
 
-        var pos   = e.GetCurrentPoint(OverlayCanvas).Position;
-        double block = Config.DefaultIconCells * Config.CellSize;
+        int dragW = _kind == DragKind.Item
+            ? (_draggedItem?.WidthCells  ?? Config.DefaultIconCells)
+            : (_draggedFolder?.WidthCells ?? Config.DefaultIconCells);
+        int dragH = _kind == DragKind.Item
+            ? (_draggedItem?.HeightCells  ?? Config.DefaultIconCells)
+            : (_draggedFolder?.HeightCells ?? Config.DefaultIconCells);
 
-        // Move ghost to cursor
-        Canvas.SetLeft(_ghost!, pos.X - block / 2);
-        Canvas.SetTop(_ghost!,  pos.Y - block / 2);
+        double blockW = dragW * Config.CellSize;
+        double blockH = dragH * Config.CellSize;
 
-        // Compute snap target
+        var pos = e.GetCurrentPoint(OverlayCanvas).Position;
+
+        // Move ghost to cursor (centered on cursor)
+        Canvas.SetLeft(_ghost!, pos.X - blockW / 2);
+        Canvas.SetTop(_ghost!,  pos.Y - blockH / 2);
+
+        // Compute exact snap target
         var snapped = Config.PixelToSnappedTopLeft(pos);
 
-        bool isFree = LayoutManager.CanPlace(snapped,
-            Config.DefaultIconCells, Config.DefaultIconCells);
+        // Check if exact position is free; if not, search within MousePlaceRadius
+        GridCoordinate? freeSlot = FindFreeSlot(snapped, dragW, dragH);
 
-        if (isFree)
+        if (freeSlot.HasValue)
         {
-            _snapTarget = snapped;
+            _snapTarget = freeSlot;
             _hitFolder  = null;
-            var px = Config.GridToPixel(snapped);
+            var px = Config.GridToPixel(freeSlot.Value);
             Canvas.SetLeft(_snapIndicator!, px.X);
             Canvas.SetTop(_snapIndicator!,  px.Y);
+            // Update indicator size in case element was resized
+            _snapIndicator!.Width  = blockW;
+            _snapIndicator!.Height = blockH;
             _snapIndicator!.Visibility = Visibility.Visible;
         }
         else
@@ -155,6 +171,39 @@ internal sealed class DragManager
             _hitFolder  = snapped;
             _snapIndicator!.Visibility = Visibility.Collapsed;
         }
+    }
+
+    /// Returns the nearest free slot for (widthCells × heightCells) within MousePlaceRadius,
+    /// starting from origin. Returns null if no free slot found within radius.
+    private GridCoordinate? FindFreeSlot(GridCoordinate origin, int widthCells, int heightCells)
+    {
+        if (LayoutManager.CanPlace(origin, widthCells, heightCells))
+            return origin;
+
+        int radius = Config.MousePlaceRadius;
+        if (radius <= 0) return null;
+
+        // Spiral search: layer by layer outward
+        for (int layer = 1; layer <= radius; layer++)
+        {
+            for (int dc = -layer; dc <= layer; dc++)
+            for (int dr = -layer; dr <= layer; dr++)
+            {
+                // Only visit the outermost ring of this layer
+                if (Math.Abs(dc) != layer && Math.Abs(dr) != layer) continue;
+
+                int col = origin.Col + dc;
+                int row = origin.Row + dr;
+                if (col < 0 || row < 0) continue;
+                if (col + widthCells  > Config.HorizontalSlots) continue;
+                if (row + heightCells > Config.VerticalSlots)   continue;
+
+                var candidate = new GridCoordinate(col, row);
+                if (LayoutManager.CanPlace(candidate, widthCells, heightCells))
+                    return candidate;
+            }
+        }
+        return null;
     }
 
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)

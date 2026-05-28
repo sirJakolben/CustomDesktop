@@ -64,4 +64,50 @@ internal sealed class GridLayoutManager
         element.TopLeft = newTopLeft;   // update position BEFORE re-registering cells
         Place(element);
     }
+
+    /// Resize element in-place. Throws if the new footprint overlaps another element.
+    public void Resize(IDesktopElement element, int newWidth, int newHeight)
+    {
+        var savedTopLeft    = element.TopLeft;
+        var savedWidth      = element.WidthCells;
+        var savedHeight     = element.HeightCells;
+        Remove(element);
+
+        if (!CanPlace(savedTopLeft, newWidth, newHeight))
+        {
+            // rollback
+            element.WidthCells  = savedWidth;
+            element.HeightCells = savedHeight;
+            Place(element);
+            throw new InvalidOperationException("Not enough free space for resize.");
+        }
+
+        element.WidthCells  = newWidth;
+        element.HeightCells = newHeight;
+        Place(element);
+    }
+
+    /// Move AND resize in one atomic operation — used when dragging a corner handle
+    /// that shifts the TopLeft (top-left, top-right handles).
+    public void ResizeAndMove(IDesktopElement element,
+                              GridCoordinate newTopLeft, int newWidth, int newHeight)
+    {
+        var savedTopLeft = element.TopLeft;
+        var savedWidth   = element.WidthCells;
+        var savedHeight  = element.HeightCells;
+        Remove(element);
+
+        if (!CanPlace(newTopLeft, newWidth, newHeight))
+        {
+            element.WidthCells  = savedWidth;
+            element.HeightCells = savedHeight;
+            Place(element);
+            throw new InvalidOperationException("Not enough free space for resize/move.");
+        }
+
+        element.TopLeft     = newTopLeft;
+        element.WidthCells  = newWidth;
+        element.HeightCells = newHeight;
+        Place(element);
+    }
 }
